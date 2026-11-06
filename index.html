@@ -140,8 +140,20 @@ const P=Object.assign({add:[],del:[],bud:{},last:null},lsGet(PEND)||{});
   S.tx=S.tx.filter(t=>!P.del.includes(t.id));
   Object.keys(P.bud).forEach(k=>{if(S.budget[k]===P.bud[k])delete P.bud[k];else S.budget[k]=P.bud[k]});
   if(P.last!==null){if(S.lastBudget===P.last)P.last=null;else S.lastBudget=P.last}
-  lsSet(PEND,P);
+lsSet(PEND,P);
 })();
+
+// Gespeicherten vollständigen Datenbestand laden
+const DATA_KEY = "finanzen-daten-v1";
+const savedState = lsGet(DATA_KEY);
+
+if (savedState && Array.isArray(savedState.tx)) {
+  S = {
+    tx: savedState.tx,
+    budget: savedState.budget || {},
+    lastBudget: savedState.lastBudget || 0
+  };
+}
 const hasPending=()=>P.add.length>0||P.del.length>0||Object.keys(P.bud).length>0||P.last!==null;
 
 let art=null,t0=null,lastDeleted=null,toastT=null;
@@ -183,12 +195,27 @@ const buildHtml=()=>{const d=buildDoc();return SKEL+d.head.concat(d.body).join("
 const buildFile=()=>{const d=buildDoc();return '<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'+d.head.join("\n")+'</head><body>'+d.body.join("\n")+'</body></html>'};
 
 function save(){
-  const stored=lsSet(PEND,P);
-  if(t0)clearTimeout(t0);
-  setStatus(art?"saving":(stored?"local":"err"));
-  if(!stored && !art){$("stt").textContent="Speicher voll – bitte HTML exportieren"}
-  t0=setTimeout(persist,600);
+  try {
+    const success = lsSet(DATA_KEY, {
+      tx: S.tx,
+      budget: S.budget,
+      lastBudget: S.lastBudget
+    });
+
+    if (!success) {
+      setStatus("err");
+      note("Speichern fehlgeschlagen – Browser-Speicher voll.");
+      return;
+    }
+
+    setStatus("local");
+  } catch(e) {
+    setStatus("err");
+    note("Speichern fehlgeschlagen: " + e.message);
+  }
+
 }
+
 async function persist(){
   if(!art){setStatus(STANDALONE?"file":"local");return}
   try{await art.publish(buildHtml());setStatus("ok")}
@@ -245,21 +272,14 @@ function aktuelleHtmlDatei(){
   return {html, file:new File([html],"finanzen.html",{type:"text/html"})};
 }
 
+
 // Speichern: direkt im Browser, kein HTML-Download
 $("saveFile").onclick = () => {
-  try {
-    localStorage.setItem(
-      "finanzen_daten",
-      JSON.stringify(alleDaten)
-    );
-    note("Daten erfolgreich im Browser gespeichert.");
-  } catch (e) {
-    note("Speichern fehlgeschlagen: " + e.message);
-  }
+  save();
+  note("Alle Finanzdaten wurden auf diesem Gerät gespeichert.");
 };
 
 
-  
 // Teilen: öffnet ausschliesslich die native Teilen-Funktion, ohne Download-Fallback.
 $("share").onclick=async()=>{
   try{
