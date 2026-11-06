@@ -245,24 +245,21 @@ function aktuelleHtmlDatei(){
   return {html, file:new File([html],"finanzen.html",{type:"text/html"})};
 }
 
-// Speichern: erzeugt eine eigenständige HTML-Datei mit allen aktuellen Daten.
-$("saveFile").onclick=()=>{
-  try{
-    const {html}=aktuelleHtmlDatei();
-    const url=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));
-    const mobile=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if(mobile){
-      const w=window.open(url,"_blank");
-      if(!w){note("Öffnen blockiert – bitte Pop-ups erlauben oder im Browser-Menü speichern");return;}
-      note("Datei geöffnet – im Browser-Menü «In Dateien sichern» wählen");
-    }else{
-      const a=document.createElement("a");a.href=url;a.download="finanzen.html";document.body.appendChild(a);a.click();a.remove();
-      note("HTML-Datei mit allen aktuellen Daten heruntergeladen");
-    }
-    setTimeout(()=>URL.revokeObjectURL(url),60000);
-  }catch(e){note("Speichern nicht möglich: "+(e.message||"Unbekannter Fehler"));}
+// Speichern: direkt im Browser, kein HTML-Download
+$("saveFile").onclick = () => {
+  try {
+    localStorage.setItem(
+      "finanzen_daten",
+      JSON.stringify(alleDaten)
+    );
+    note("Daten erfolgreich im Browser gespeichert.");
+  } catch (e) {
+    note("Speichern fehlgeschlagen: " + e.message);
+  }
 };
 
+
+  
 // Teilen: öffnet ausschliesslich die native Teilen-Funktion, ohne Download-Fallback.
 $("share").onclick=async()=>{
   try{
