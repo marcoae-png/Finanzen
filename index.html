@@ -162,9 +162,9 @@ const now=new Date();
 const today=now.getFullYear()+"-"+pad(now.getMonth()+1)+"-"+pad(now.getDate());
 // Beim Öffnen den aktuellen Monat verwenden. Falls dort keine Buchungen liegen,
 // automatisch zum Monat der neuesten gespeicherten Buchung wechseln.
-const currentYM=today.slice(0,7);
+const currentYM=periodKey(today);
 const latestTxDate=S.tx.map(t=>t.date).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d)).sort().pop();
-let ym=(S.tx.some(t=>t.date.slice(0,7)===currentYM)||!latestTxDate)?currentYM:latestTxDate.slice(0,7);
+let ym=(S.tx.some(t=>periodKey(t.date)===currentYM)||!latestTxDate)?currentYM:periodKey(latestTxDate);
 let type="E";
 
 function setStatus(k){
@@ -191,8 +191,11 @@ function buildDoc(){
   return {head:head,body:body};
 }
 /* Variante 1: Seite, die sich selbst als Artifact veröffentlicht. Variante 2: eigenständige Datei zum Weitergeben. */
-const buildHtml=()=>{const d=buildDoc();return SKEL+d.head.concat(d.body).join("\n")+"</body></html>"};
-const buildFile=()=>{const d=buildDoc();return '<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'+d.head.join("\n")+'</head><body>'+d.body.join("\n")+'</body></html>'};
+const buildHtml=()=>{const d=buildDoc();return SKEL+d.head.concat(d.body).join("
+")+"</body></html>"};
+const buildFile=()=>{const d=buildDoc();return '<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'+d.head.join("
+")+'</head><body>'+d.body.join("
+")+'</body></html>'};
 
 function save(){
   try {
@@ -230,6 +233,7 @@ async function persist(){
 $("cat").innerHTML=CATS.map(c=>`<option>${c[0]}</option>`).join("");
 $("date").value=today;
 
+function periodKey(date){const [y,m,d]=date.split("-").map(Number);const dt=new Date(y,m-1-(d<15?1:0),1);return dt.getFullYear()+"-"+pad(dt.getMonth()+1)}
 function shift(d){let[y,m]=ym.split("-").map(Number);m+=d;if(m<1){m=12;y--}if(m>12){m=1;y++}ym=y+"-"+pad(m);render()}
 $("prev").onclick=()=>shift(-1);$("next").onclick=()=>shift(1);
 $("tE").onclick=()=>setType("E");$("tI").onclick=()=>setType("I");
@@ -250,7 +254,7 @@ $("add").onclick=()=>{
   const a=parseFloat($("amt").value);
   if(!(a>0)){$("amt").focus();return}
   const d=$("date").value||today;
-  ym=d.slice(0,7);
+  ym=periodKey(d);
   addTx({id:String(Date.now()),type,amt:a,cat:type=="E"?$("cat").value:"Einnahme",date:d,note:$("note").value.trim()});
   $("amt").value="";$("note").value="";$("amt").focus();
 };
@@ -298,10 +302,13 @@ $("share").onclick=async()=>{
 
 function render(){
   const [y,m]=ym.split("-").map(Number);
-  $("mname").textContent=new Date(y,m-1,1).toLocaleDateString("de-CH",{month:"long",year:"numeric"});
+  const start=new Date(y,m-1,15);const end=new Date(y,m,14);
+  const fmtDate=d=>d.toLocaleDateString("de-CH",{day:"numeric",month:"short"});
+  $("mname").textContent=fmtDate(start)+" – "+fmtDate(end)+" "+end.getFullYear();
   const bud=S.budget[ym]!==undefined?S.budget[ym]:S.lastBudget;
   if(document.activeElement!==$("bud"))$("bud").value=bud||"";
-  const tx=S.tx.filter(t=>t.date.startsWith(ym)).sort((a,b)=>b.date.localeCompare(a.date)||Number(b.id)-Number(a.id));
+  const from=y+"-"+pad(m)+"-15";const next=new Date(y,m,15);const until=next.getFullYear()+"-"+pad(next.getMonth()+1)+"-15";
+  const tx=S.tx.filter(t=>t.date>=from&&t.date<until).sort((a,b)=>b.date.localeCompare(a.date)||Number(b.id)-Number(a.id));
   const inc=tx.filter(t=>t.type=="I").reduce((s,t)=>s+t.amt,0);
   const exp=tx.filter(t=>t.type=="E").reduce((s,t)=>s+t.amt,0);
   const avail=bud+inc,left=avail-exp;
@@ -332,3 +339,5 @@ if(window.claude&&window.claude.use){
 }else setStatus("file");
 </script>
 </body></html>
+
+
