@@ -191,11 +191,8 @@ function buildDoc(){
   return {head:head,body:body};
 }
 /* Variante 1: Seite, die sich selbst als Artifact veröffentlicht. Variante 2: eigenständige Datei zum Weitergeben. */
-const buildHtml=()=>{const d=buildDoc();return SKEL+d.head.concat(d.body).join("
-")+"</body></html>"};
-const buildFile=()=>{const d=buildDoc();return '<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'+d.head.join("
-")+'</head><body>'+d.body.join("
-")+'</body></html>'};
+const buildHtml=()=>{const d=buildDoc();return SKEL+d.head.concat(d.body).join("\n")+"</body></html>"};
+const buildFile=()=>{const d=buildDoc();return '<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'+d.head.join("\n")+'</head><body>'+d.body.join("\n")+'</body></html>'};
 
 function save(){
   try {
@@ -339,5 +336,4 @@ if(window.claude&&window.claude.use){
 }else setStatus("file");
 </script>
 </body></html>
-
 
